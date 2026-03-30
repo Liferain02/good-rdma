@@ -1,4 +1,7 @@
-PROJ_DIR=~/programs/gam/code
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJ_DIR="${PROJ_DIR:-${SCRIPT_DIR}/../../..}"
 GAM_CORE=${PROJ_DIR}/src
 TPCC_DIR=${PROJ_DIR}/database/tpcc
 TEST_DIR=${PROJ_DIR}/database/test

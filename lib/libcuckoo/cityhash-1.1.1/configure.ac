@@ -14,10 +14,9 @@ AM_INIT_AUTOMAKE([1.10 no-define foreign])
 LT_PREREQ([2.2])
 LT_INIT
 
-AC_CONFIG_FILES([Makefile
-                 src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile])
 AC_CONFIG_SRCDIR([src/city.h])
-AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_MACRO_DIRS([m4])
 
 AC_ARG_ENABLE([sse4.2],
               AS_HELP_STRING("Build CityHash variants that depend on the _mm_crc32_u64 intrinsic."),

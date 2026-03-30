@@ -12,7 +12,7 @@ AC_CONFIG_FILES([ Makefile
                 ])
 AC_CONFIG_SRCDIR([src/cuckoohash_map.hh])
 AC_CONFIG_SUBDIRS([cityhash-1.1.1 tests])
-AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_MACRO_DIRS([m4])
 
 # Empty defaults for flags
 : ${CFLAGS=""}

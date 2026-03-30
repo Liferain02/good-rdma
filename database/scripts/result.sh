@@ -1,7 +1,8 @@
 #!/bin/bash
 # This script extract the running results of tpcc benchmark and write to OUTFILE
 OUTFILE=result.out
-INPUTDIR=/data/wentian
+# INPUTDIR：结果日志所在目录（覆盖方式：设置环境变量 INPUTDIR）
+INPUTDIR="${INPUTDIR:-.}"
 INFILE=tpcc.log
 
 echo "" > $OUTFILE

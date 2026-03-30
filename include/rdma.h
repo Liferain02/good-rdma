@@ -22,7 +22,7 @@ class RdmaContext;
 
 typedef void* raddr;  //raddr means registered addr
 
-#define MASTER_RDMA_CONN_STRLEN 22 /** 4 bytes for lid + 8 bytes qpn
+#define MASTER_RDMA_CONN_STRLEN 90 /** 32 bytes for gid (hex) + 8 bytes qpn
                                     * + 8 bytes for psn
                                     * seperated by 2 colons */
 
@@ -43,7 +43,7 @@ struct RdmaConnection { /* information of IB conn */
   uint32_t qpn; /* QP number */
   uint32_t psn; /* packet sequence number */
   uint32_t rkey; /* remote key */
-  uint32_t lid; /* LID of the IB port */
+  uint8_t gid_index; /* GID index used for RoCE v2 */
 };
 
 class RdmaResource {
@@ -57,6 +57,8 @@ class RdmaResource {
   ibv_port_attr portAttribute;
   int ibport = 1; /* TODO: dual-port support */
   uint32_t psn;bool isForMaster;
+  uint8_t gid_index = 0;
+  union ibv_gid my_gid;
   friend class RdmaContext;
 
   //the follow three variables are only used for comm among workers
@@ -115,6 +117,12 @@ class RdmaResource {
   void DeleteRdmaContext(RdmaContext* ctx);
   inline int GetCounter() {
     return rdma_context_counter;
+  }
+  inline uint8_t GetGidIndex() const {
+    return gid_index;
+  }
+  inline const union ibv_gid& GetGid() const {
+    return my_gid;
   }
 
 };
@@ -193,6 +201,9 @@ class RdmaContext {
   }
   inline void* GetBase() {
     return (void*) vaddr;
+  }
+  inline uint32_t GetRkey() {
+    return rkey;
   }
 
   unsigned int SendComp(ibv_wc& wc);

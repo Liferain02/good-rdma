@@ -2,8 +2,7 @@
 #include <iostream>
 #include <cstring>
 #include "gallocator.h"
-// #include "util.h"
-// #include "gptr.h"
+#include "gptr.h"
 using namespace std;
 
 int main()
@@ -21,7 +20,7 @@ int main()
            allocator->GetLocal(lptr));
     // int i = 2, j = 0;
     // 使用 GPtr 包装全局地址
-    GAlloc::GPtr<int> gptr(lptr, allocator);
+    GPtr<int> gptr(lptr, allocator);
     // 写入值
     *gptr = 2;
 

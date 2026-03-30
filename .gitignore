@@ -1,18 +1,184 @@
-# Build and Release Folders
-bin-debug/
-bin-release/
-[Oo]bj/
-[Bb]in/
+# =============================================
+# 编译产物 - 通用
+# =============================================
 
-# Other files and folders
+# 目标文件
+*.o
+*.obj
+*.gch
+*.pch
+
+# 静态库
+*.a
+*.lib
+
+# 动态库/共享对象
+*.so
+*.so.[0-9]*
+*.dylib
+*.dll
+*.dll.a
+
+# 可执行文件 / 测试程序
+benchmark
+cs_test
+example
+example-r
+fence_test
+garray_test
+gfunc_test
+hashtable_test
+hashtable_throw_test
+lock_test
+lru_test
+master
+map_test
+rw_test
+slab_test
+worker
+test/benchmark
+test/cs_test
+test/example
+test/example-r
+test/fence_test
+test/garray_test
+test/gfunc_test
+test/hashtable_test
+test/hashtable_throw_test
+test/lock_test
+test/lru_test
+test/master
+test/map_test
+test/rw_test
+test/slab_test
+test/worker
+test/simple_gptr
+test/gptr_test
+
+# =============================================
+# Autotools 构建产物 (libcuckoo / cityhash)
+# =============================================
+
+# configure 生成的脚本和配置
+configure
+config.h
+config.h.in
+config.log
+config.status
+stamp-h1
+libtool
+ltmain.sh
+
+# Makefile.in 和生成的 Makefile
+Makefile.in
+Makefile
+*.lo
+*.la
+*.Plo
+
+# 依赖和编译信息
+.deps/
+.depvars
+.libs/
+*.Po
+
+# autom4te 缓存
+autom4te.cache/
+
+# aclocal / autoconf 生成文件
+aclocal.m4
+install-sh
+missing
+mkinstalldirs
+depcomp
+compile
+config.guess
+config.sub
+ltconfig
+CMP
+CREATE_FOR_AUTOMAKE
+ar-lib
+test-driver
+
+# m4 宏目录
+m4/*.m4
+
+# =============================================
+# 日志文件
+# =============================================
+log.*
+*.log
+
+# =============================================
+# Core dump 文件
+# =============================================
+core
+core.[0-9]*
+*.core
+
+# =============================================
+# 编辑器和系统临时文件
+# =============================================
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Vim
+*.swp
+*.swo
+*.swn
+*.tmp
+*.bak
+
+# VS Code
+.vscode/
+
+# JetBrains (IntelliJ, CLion, etc.)
+.idea/
+*.iml
+
+# Eclipse
+.project
+.classpath
 .settings/
-.history/
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
 
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+
+# =============================================
+# cityhash 特定产物
+# =============================================
+.libs/
+*.lo
+*.la
+libcityhash.a
+
+# =============================================
+# 其他
+# =============================================
+
+# 链接脚本
+*.ld
+
+# 预处理输出
+*.i
+*.ii
+
+# 汇编输出
+*.s
+*.S
+
+# 依赖文件
+*.d
+*.d.[0-9]*
+*.d.[0-9]*.[0-9]*

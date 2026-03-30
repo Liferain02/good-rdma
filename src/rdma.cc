@@ -15,6 +15,13 @@
 #include "kernel.h"
 #include "workrequest.h"
 
+static void GidToHex(const union ibv_gid& gid, char* out) {
+  for (int i = 0; i < 16; i++) {
+    sprintf(out + i * 2, "%02x", gid.raw[i]);
+  }
+  out[32] = '\0';
+}
+
 static int page_size = 4096;
 int MAX_RDMA_INLINE_SIZE = 256;
 
@@ -71,6 +78,24 @@ RdmaResource::RdmaResource(ibv_device *dev, bool master)
     epicLog(LOG_FATAL, "Unable to query port %d\n", ibport);
     goto clean_srq;
   }
+
+  // Query GID - use index 3 which is the IPv6 GID mapped from the IPv4 address (RoCE v2)
+  // GID index 3 = v2 with IPv4-mapped address (e.g., ::ffff:10.10.x.x)
+  gid_index = 3;
+  if (ibv_query_gid(context, ibport, gid_index, &my_gid)) {
+    epicLog(LOG_WARNING, "Unable to query GID index %d, falling back to index 1\n", gid_index);
+    gid_index = 1;
+    if (ibv_query_gid(context, ibport, gid_index, &my_gid)) {
+      epicLog(LOG_FATAL, "Unable to query GID for port %d\n", ibport);
+      goto clean_srq;
+    }
+  }
+  epicLog(LOG_INFO, "Using GID index %d: %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x\n",
+          gid_index,
+          my_gid.raw[0], my_gid.raw[1], my_gid.raw[2], my_gid.raw[3],
+          my_gid.raw[4], my_gid.raw[5], my_gid.raw[6], my_gid.raw[7],
+          my_gid.raw[8], my_gid.raw[9], my_gid.raw[10], my_gid.raw[11],
+          my_gid.raw[12], my_gid.raw[13], my_gid.raw[14], my_gid.raw[15]);
 
   devName = ibv_get_device_name(this->device);
   srand48(time(NULL));
@@ -457,17 +482,25 @@ RdmaContext::RdmaContext(RdmaResource *res, bool master)
 
 int RdmaContext::SetRemoteConnParam(const char *conn) {
   int ret;
-  uint32_t rlid, rpsn, rqpn, rrkey;
+  uint32_t rqpn, rpsn, rrkey;
   uint64_t rvaddr;
+  char rgid_str[33];
 
   if (IsMaster()) {
-    /* conn should be of the format "lid:qpn:psn" */
-    sscanf(conn, "%x:%x:%x", &rlid, &rqpn, &rpsn);
+    /* conn should be of the format "gid:qpn:psn" */
+    sscanf(conn, "%32s:%x:%x", rgid_str, &rqpn, &rpsn);
   } else {
-    /* conn should be of the format "lid:qpn:psn:rkey:vaddr" */
-    sscanf(conn, "%x:%x:%x:%x:%lx", &rlid, &rqpn, &rpsn, &rrkey, &rvaddr);
+    /* conn should be of the format "gid:qpn:psn:rkey:vaddr" */
+    sscanf(conn, "%32s:%x:%x:%x:%lx", rgid_str, &rqpn, &rpsn, &rrkey, &rvaddr);
     this->rkey = rrkey;
     this->vaddr = rvaddr;
+  }
+
+  // Parse remote GID from hex string
+  union ibv_gid rgid;
+  for (int i = 0; i < 16; i++) {
+    char byte_str[3] = { rgid_str[i*2], rgid_str[i*2+1], '\0' };
+    rgid.raw[i] = (uint8_t)strtol(byte_str, NULL, 16);
   }
 
   /* modify qp to RTR state */
@@ -479,11 +512,17 @@ int RdmaContext::SetRemoteConnParam(const char *conn) {
     attr.rq_psn = rpsn;
     attr.max_dest_rd_atomic = 1;
     attr.min_rnr_timer = 12;
-    attr.ah_attr.is_global = 0;
-    attr.ah_attr.dlid = rlid;
+
+    // Enable global routing for RoCE v2
+    attr.ah_attr.is_global = 1;
+    attr.ah_attr.dlid = 0;  // Not used in RoCE
     attr.ah_attr.src_path_bits = 0;
-    //attr.ah_attr.sl = 1;
+    attr.ah_attr.sl = 0;
     attr.ah_attr.port_num = resource->ibport;
+    attr.ah_attr.grh.traffic_class = 0;
+    attr.ah_attr.grh.hop_limit = 0xFF;
+    attr.ah_attr.grh.dgid = rgid;
+    attr.ah_attr.grh.sgid_index = resource->gid_index;
 
     ret = ibv_modify_qp(
         this->qp,
@@ -540,11 +579,15 @@ const char* RdmaContext::GetRdmaConnString() {
    * for communication among workers, we also allow direct access to the whole memory space so that we expose the base addr and rkey
    */
   if (IsMaster()) {
-    sprintf(msg, "%04x:%08x:%08x", this->resource->portAttribute.lid,
+    char gid_str[33];
+    GidToHex(this->resource->my_gid, gid_str);
+    sprintf(msg, "%32s:%08x:%08x", gid_str,
             this->qp->qp_num, this->resource->psn);
   } else {
-    sprintf(msg, "%04x:%08x:%08x:%08x:%016lx",
-            this->resource->portAttribute.lid, this->qp->qp_num,
+    char gid_str[33];
+    GidToHex(this->resource->my_gid, gid_str);
+    sprintf(msg, "%32s:%08x:%08x:%08x:%016lx",
+            gid_str, this->qp->qp_num,
             this->resource->psn, this->resource->bmr->rkey,
             (uintptr_t) this->resource->base);
   }

@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 
 # 3台机器
-slaves_content="12.12.12.1 12345
-12.12.12.2 12345
-12.12.12.3 12345"
+slaves_content="10.10.10.13 12345
+10.10.10.22 12345
+10.10.10.18 12345"
 
 # 创建临时 slaves 文件
 slaves_file=$(mktemp)
 echo "$slaves_content" > "$slaves_file"
 
-# 测试程序路径
-SRC_HOME=/public/home/tensor/perl5/lifr/code/gam/test
+# 测试程序路径（相对于本脚本目录，自动推导）
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SRC_HOME="${SCRIPT_DIR}/../test"
 
 # 运行测试
 run() {

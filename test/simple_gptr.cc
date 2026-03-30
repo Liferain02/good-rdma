@@ -3,8 +3,8 @@
 #include <atomic>
 #include <unistd.h>
 #include "gallocator.h"
+#include "gptr.h"
 // #include "util.h"
-// #include "gptr.h"
 
 #define SYNC_KEY 1000
 
@@ -79,11 +79,8 @@ int main(int argc, char *argv[])
         }
 
         // 使用 GPtr 写入数据
-        char data[1024];
-        memset(data, 'A', 1024);
-        // int data = 666;
-        GAlloc::GPtr<char *> gptr(addr, alloc);
-        *gptr = data; // 通过运算符重载写入
+        GPtr<int> gptr_w(addr, alloc);
+        *gptr_w = 666; // 通过运算符重载写入
         std::cout << "Node 1 wrote 666 to " << addr << std::endl;
         // 将分配的地址写入全局键值对，供其他节点访问
         alloc->Put(1, &addr, sizeof(GAddr));
@@ -101,9 +98,8 @@ int main(int argc, char *argv[])
         {
             std::cout << "addr at Node " << node_id << std::endl;
         }
-        GAlloc::GPtr<char *> gptr(addr, alloc);
-        char data[1024];
-        data = *gptr; // 通过运算符重载读取
+        GPtr<int> gptr_r(addr, alloc);
+        int data = *gptr_r; // 通过运算符重载读取
         std::cout << "Node 2 read from " << addr << ": " << data << std::endl;
         if (data == 666)
         {
@@ -124,7 +120,7 @@ int main(int argc, char *argv[])
         {
             std::cout << "addr at Node " << node_id << std::endl;
         }
-        GAlloc::GPtr<int> gptr(addr, alloc);
+        GPtr<int> gptr(addr, alloc);
         int data = *gptr; // 通过运算符重载读取
         std::cout << "Node 3 read from " << addr << ": " << data << std::endl;
         if (data == 666)

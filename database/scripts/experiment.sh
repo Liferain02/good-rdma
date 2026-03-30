@@ -6,14 +6,15 @@ set -o nounset
 
 # specify your hosts_file here 
 # hosts_file specify a list of host names and port numbers, with the host names in the first column
-hosts_file="../tpcc/config.txt"
-# specify your directory for log files
-output_dir="/data/wentian"
+hosts_file="${HOSTS_FILE:-../tpcc/config.txt}"
 
-# working environment
-proj_dir="~/programs/gam/code"
+# specify your directory for log files（覆盖方式：设置环境变量 OUTPUT_DIR）
+output_dir="${OUTPUT_DIR:-.}"
+
+# working environment（覆盖方式：设置环境变量 PROJ_DIR）
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+proj_dir="${PROJ_DIR:-${script_dir}/../../..}"
 bin_dir="${proj_dir}/database/tpcc"
-script_dir="{proj_dir}/database/scripts"
 ssh_opts="-o StrictHostKeyChecking=no"
 
 hosts_list=`./get_servers.sh ${hosts_file} | tr "\\n" " "`

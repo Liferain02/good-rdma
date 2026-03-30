@@ -2,14 +2,16 @@
 bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 SRC_HOME=$bin/../test
-slaves=$bin/slaves
-log_file=$bin/log
-master_ip=ciidaa-a02
-master_port=1231
+SLAVES_FILE="${SLAVES_FILE:-${bin}/slaves}"
+log_file="${LOG_FILE:-${bin}/log}"
+master_port="${MASTER_PORT:-1231}"
 
 run() {
-    echo "run for result_file=$result_file, 
-    node=$node, thread=$thread, 
+    # 先清理当前节点的旧进程
+    ssh -o ConnectTimeout=5 "$ip" "killall -9 benchmark 2>/dev/null || true" 2>/dev/null
+
+    echo "run for result_file=$result_file,
+    node=$node, thread=$thread,
     remote_ratio=$remote_ratio, shared_ratio=$shared_ratio,
     read_ratio=$read_ratio, op_type=$op_type,
     space_locality=$space_locality, time_locality=$time_locality"
@@ -17,24 +19,61 @@ run() {
     old_IFS=$IFS
     IFS=$'\n'
     i=0
-    for slave in `cat "$slaves"`
+    for slave in `cat "$SLAVES_FILE"`
     do
-    	ip=`echo $slave | cut -d ' ' -f1`
-    	port=`echo $slave | cut -d ' ' -f2`
+    	ip=$(echo "$slave" | awk '{print $1}')
+    	port=$(echo "$slave" | awk '{print $2}')
+
+    	# 跳过空行
+    	[[ -z "$ip" ]] && continue
+
     	if [ $i = 0 ]; then
     		is_master=1
             master_ip=$ip
     	else
     		is_master=0
     	fi
-    	if [ $port == $ip ]; then
+    	if [ "$port" = "$ip" ] || [ -z "$port" ]; then
     		port=1234
     	fi
     	echo ""
     	echo "slave = $slave, ip = $ip, port = $port"
-    	echo "$SRC_HOME/benchmark --cache_th $cache_th --op_type $op_type --no_node $node --no_thread $thread --remote_ratio $remote_ratio --shared_ratio $shared_ratio --read_ratio $read_ratio --space_locality $space_locality --time_locality $time_locality --result_file $result_file --ip_master $master_ip --ip_worker $ip --port_worker $port --is_master $is_master --port_master $master_port" | tee -a "$log_file".$ip
-    	ssh $ip	"$SRC_HOME/benchmark --cache_th $cache_th --op_type $op_type --no_node $node --no_thread $thread --remote_ratio $remote_ratio --shared_ratio $shared_ratio --read_ratio $read_ratio --space_locality $space_locality --time_locality $time_locality --result_file "$result_file" --ip_master $master_ip --ip_worker $ip --port_worker $port --is_master $is_master --port_master $master_port | tee -a '$log_file'.$ip" &
-    	sleep 1
+
+    	# 清理当前节点的旧进程
+    	ssh -o ConnectTimeout=5 "$ip" "killall -9 benchmark 2>/dev/null || true" 2>/dev/null
+    	sleep 2
+
+    	# 构建命令 - 使用 printf 避免变量展开问题
+    	# 先打印命令
+    	printf "%s/benchmark --cache_th %s --op_type %s --no_node %s --no_thread %s --remote_ratio %s --shared_ratio %s --read_ratio %s --space_locality %s --time_locality %s --result_file %s --ip_master %s --ip_worker %s --port_worker %s --is_master %s --port_master %s\n" \
+    		"$SRC_HOME" "$cache_th" "$op_type" "$node" "$thread" \
+    		"$remote_ratio" "$shared_ratio" "$read_ratio" \
+    		"$space_locality" "$time_locality" \
+    		"$result_file" "$master_ip" "$ip" "$port" \
+    		"$is_master" "$master_port" | tee -a "$log_file.$ip"
+
+    	# 远程执行 - 使用 printf 避免 SSH 转义问题
+    	ssh -o StrictHostKeyChecking=no "$ip" "
+    		$SRC_HOME/benchmark \
+    			--cache_th $cache_th \
+    			--op_type $op_type \
+    			--no_node $node \
+    			--no_thread $thread \
+    			--remote_ratio $remote_ratio \
+    			--shared_ratio $shared_ratio \
+    			--read_ratio $read_ratio \
+    			--space_locality $space_locality \
+    			--time_locality $time_locality \
+    			--result_file '$result_file' \
+    			--ip_master $master_ip \
+    			--ip_worker $ip \
+    			--port_worker $port \
+    			--is_master $is_master \
+    			--port_master $master_port \
+    			2>&1 | tee -a '$log_file.\$ip'
+    	" &
+
+    	sleep 3
     	i=$((i+1))
     	if [ "$i" = "$node" ]; then
     		break
@@ -42,10 +81,11 @@ run() {
     done # for slave
 	wait
 	j=0
-	for slave in `cat $slaves`
+	for slave in `cat "$SLAVES_FILE"`
 	do
-		ip=`echo $slave | cut -d ' ' -f1`
-		ssh $ip killall benchmark > /dev/null 2>&1
+		ip=$(echo "$slave" | awk '{print $1}')
+		[[ -z "$ip" ]] && continue
+		ssh -o ConnectTimeout=5 "$ip" "killall -9 benchmark 2>/dev/null || true" 2>/dev/null
 		j=$((j+1))
 		if [ $j = $node ]; then
 			break;

@@ -1,8 +1,11 @@
-CPP = g++ -std=c++11
-GAM_INCLUDE = -I../../include -I../ -I../../lib/libcuckoo/src -I../../lib/libcuckoo/cityhash-1.1.1/src
+# Boost library path（BOOST_HOME 环境变量，默认使用本地预置的 Boost 1.53.0）
+BOOST_HOME ?= /share/home/lifr/workspace/data/boost1.53.0
+
+CPP = g++ -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1
+GAM_INCLUDE = -I../../include -I../ -I../../lib/libcuckoo/src -I../../lib/libcuckoo/cityhash-1.1.1/src -I$(BOOST_HOME)/include
 DB_INCLUDE = -I.. -I../tpcc -I../bench -I../storage -I../txn -I../utils
 INCLUDE = $(GAM_INCLUDE) $(DB_INCLUDE)
-LIBS = ../../src/libgalloc.a -libverbs -lboost_filesystem -lboost_system -lboost_date_time -lboost_thread ../../lib/libcuckoo/cityhash-1.1.1/src/.libs/libcityhash.a
+LIBS = ../../src/libgalloc.a -L$(BOOST_HOME)/lib -libverbs -lboost_filesystem -lboost_system -lboost_date_time -lboost_thread ../../lib/libcuckoo/cityhash-1.1.1/src/.libs/libcityhash.a -Wl,-rpath,$(BOOST_HOME)/lib
 CFLAGS += -O3 -g -DLOCK -DBACKOFF #-DPROFILE
 
 all: tpcc_populate_test hash_index_test
