@@ -30,85 +30,76 @@ export BOOST_HOME=/usr
 
 ---
 
-## 构建步骤
+## 构建
 
-### 完整构建流程
-
-按照以下顺序执行：
+使用 `build.sh` 一键构建所有模块：
 
 ```bash
-cd /path/to/good-rdma
-
-# =============================================
-# 第 1 步：清理旧的编译产物（首次可跳过）
-# =============================================
-bash scripts/clean.sh
-
-# =============================================
-# 第 2 步：构建 libcuckoo（包含 cityhash）
-#           libcuckoo 使用 Autotools 构建
-# =============================================
-cd lib/libcuckoo
-
-# 运行 autoconf 生成 configure 脚本
-autoreconf -i
-
-# 配置并安装到项目目录
-./configure --prefix=$(pwd)
-make
-make install
+bash scripts/build.sh
 ```
 
-> **注意**：`make install` 会将 cityhash 的库文件安装到 `lib/libcuckoo/cityhash-1.1.1/src/.libs/` 目录，Good-RDMA 主项目从此路径链接 cityhash 库。
+默认构建所有模块（libcuckoo、src、test、dht），支持以下选项：
 
-### 第 3 步：构建核心库 `libgalloc.a`
+| 选项 | 说明 |
+|------|------|
+| `--all` | 构建所有模块（默认） |
+| `--src` | 仅构建核心库 `src/` |
+| `--test` | 仅构建测试程序 `test/` |
+| `--dht` | 仅构建 DHT 模块 |
+| `--database` | 仅构建数据库测试 |
+| `--clean` | 清理后重新构建 |
+| `--help` | 显示帮助信息 |
+
+**构建流程（默认 --all）：**
+
+1. **构建 libcuckoo**：运行 `autoconf` 生成配置脚本，执行 `./configure`，编译并安装 cityhash 库
+2. **构建核心库**：`src/Makefile` 执行 `make -j`，生成 `libgalloc.a`
+3. **构建测试程序**：`test/Makefile` 执行 `make build -j`，生成 benchmark、master、worker 等可执行文件
+4. **构建 DHT 模块**：`dht/Makefile` 执行 `make -j`，生成 DHT benchmark
+
+**示例：**
 
 ```bash
-cd /path/to/good-rdma/src
-make -j
+# 构建所有
+bash scripts/build.sh
+
+# 仅构建核心库
+bash scripts/build.sh --src
+
+# 清理后重新构建
+bash scripts/build.sh --clean
+
+# 构建特定模块
+bash scripts/build.sh --test
+bash scripts/build.sh --dht
 ```
 
-这会编译 `src/` 下所有 `.cc` 文件并生成 `libgalloc.a` 静态库。
-
-### 第 4 步：构建测试程序
-
-有两种方式构建测试程序：
-
-**方式 A：在 `src/` 目录下构建（部分测试）**
+## 清理
 
 ```bash
-cd /path/to/good-rdma/src
-make test -j
+# 清理所有编译产物（.o、libgalloc.a、测试程序、日志、core dump）
+bash scripts/clean-all.sh
 ```
 
-这会构建 `benchmark`、`lock_test`、`example`、`worker`、`master` 等测试程序。
+`clean-all.sh` 会清理以下内容：
 
-**方式 B：在 `test/` 目录下构建（全部测试）**
+| 目录/文件 | 清理内容 |
+|-----------|----------|
+| `src/` | `.o`、`.a`、`.so`、可执行文件 |
+| `test/` | benchmark、master、worker 等测试程序 |
+| `dht/` | `.o`、benchmark、kvbench、kvserver |
+| `database/` | `.o` 文件 |
+| `lib/libcuckoo/` | Autotools 配置残留（Makefile、configure、.libs 等） |
+| `scripts/` | 日志文件 `log.*` |
+| 项目根目录 | `core.*`、`core` |
+
+清理远程节点进程：
 
 ```bash
-cd /path/to/lifr/workspace/code/good-rdma/test
-make build -j
+bash scripts/killall.sh
 ```
 
-这会构建所有测试程序：`benchmark`、`lru_test`、`lock_test`、`slab_test`、`hashtable_test`、`garray_test`、`cs_test` 等。
-
-### 第 5 步：构建 DHT 模块（可选）
-
-```bash
-cd /path/to/good-rdma/dht
-make -j
-```
-
-> DHT 模块需要 `src/libgalloc.a` 已构建完成。
-
-### 第 6 步：构建数据库测试模块（可选）
-
-```bash
-cd /path/to/good-rdma/database/scripts
-bash compile.sh
-```
-
-这会依次构建 `src/`、`database/tpcc/`、`database/test/` 三个部分。
+该脚本同时清理本地和 `scripts/slaves` 中配置的远程节点，杀掉所有 benchmark 进程并释放端口 1231、12345。
 
 ---
 
@@ -179,16 +170,17 @@ bash scripts/benchmark-all.sh
 ### 常用命令汇总
 
 ```bash
-# 完整构建
-cd lib/libcuckoo && autoreconf -i && ./configure && make && make install
-cd ../../src && make -j
-cd ../test && make build -j
+# 一键构建所有模块
+bash scripts/build.sh
 
-# 清理所有编译产物
-bash scripts/clean.sh
+# 清理 + 重新构建
+bash scripts/build.sh --clean
 
-# 查看可用的 make 目标
-make help 2>/dev/null || make -n
+# 清理编译产物
+bash scripts/clean-all.sh
+
+# 清理远程节点进程
+bash scripts/killall.sh
 ```
 
 ### 目录结构
@@ -213,9 +205,10 @@ good-rdma/
 │       └── cityhash-1.1.1/
 │           └── src/.libs/libcityhash.a  # cityhash 库文件
 ├── scripts/
-│   ├── clean.sh        # 清理脚本
+│   ├── build.sh         # 一键构建脚本
+│   ├── clean-all.sh     # 清理脚本
+│   ├── killall.sh       # 清理远程节点进程
 │   ├── slaves          # 集群节点配置
-│   ├── test.sh         # 简单测试脚本
 │   └── benchmark-all.sh # 自动化基准测试
 └── include/            # 头文件
 ```
@@ -237,22 +230,3 @@ good-rdma/
 **4. Autotools 工具缺失**
 
 如果 `autoreconf` 或 `configure` 命令不存在，需要安装 `autoconf`、`automake`、`libtool`。
-
----
-
-## 代码更新后的重新构建
-
-每次 pull 新代码后，建议执行：
-
-```bash
-# 1. 清理旧产物
-bash scripts/clean.sh
-
-# 2. 重新构建（从 libcuckoo 开始）
-cd lib/libcuckoo && make distclean 2>/dev/null; autoreconf -i && ./configure && make && make install
-cd ../../src && make clean && make -j
-cd ../test && make clean && make build -j
-
-# 3. 验证构建成功
-ls -la src/libgalloc.a test/benchmark
-```
