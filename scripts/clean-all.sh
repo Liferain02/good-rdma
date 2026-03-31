@@ -21,8 +21,8 @@ make -C "$PROJ_DIR/src" clean 2>/dev/null || rm -f "$PROJ_DIR/src"/*.o "$PROJ_DI
 
 # test 目录
 echo "清理 test 目录..."
-make -C "$PROJ_DIR/test" clean 2>/dev/null || rm -f \
-    "$PROJ_DIR/test"/benchmark "$PROJ_DIR/test"/cs_test \
+make -C "$PROJ_DIR/test" clean 2>/dev/null || true
+rm -f "$PROJ_DIR/test"/*.o "$PROJ_DIR/test"/benchmark "$PROJ_DIR/test"/cs_test \
     "$PROJ_DIR/test"/example "$PROJ_DIR/test"/example-r \
     "$PROJ_DIR/test"/fence_test "$PROJ_DIR/test"/garray_test \
     "$PROJ_DIR/test"/gfunc_test "$PROJ_DIR/test"/hashtable_test \
@@ -33,11 +33,13 @@ make -C "$PROJ_DIR/test" clean 2>/dev/null || rm -f \
 
 # dht 目录
 echo "清理 dht 目录..."
-make -C "$PROJ_DIR/dht" clean 2>/dev/null || rm -f "$PROJ_DIR/dht"/*.o "$PROJ_DIR/dht"/benchmark "$PROJ_DIR/dht"/kvbench "$PROJ_DIR/dht"/kvclient "$PROJ_DIR/dht"/kvserver 2>/dev/null || true
+make -C "$PROJ_DIR/dht" clean 2>/dev/null || true
+rm -f "$PROJ_DIR/dht"/*.o "$PROJ_DIR/dht"/benchmark "$PROJ_DIR/dht"/kvbench "$PROJ_DIR/dht"/kvclient "$PROJ_DIR/dht"/kvserver 2>/dev/null || true
 
 # database 目录
 echo "清理 database 目录..."
-make -C "$PROJ_DIR/database" clean 2>/dev/null || (find "$PROJ_DIR/database" -name "*.o" -delete 2>/dev/null || true)
+make -C "$PROJ_DIR/database" clean 2>/dev/null || true
+find "$PROJ_DIR/database" -name "*.o" -delete 2>/dev/null || true
 
 # libcuckoo (Autotools)
 echo "清理 libcuckoo..."
